@@ -1,0 +1,100 @@
+
+Description: Munki AWS Setup
+
+Parameters:
+  BucketName:
+    Type: String
+    Description: A Unique Name for the S3 Bucket that will be created
+
+
+Resources:
+  S3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      BucketName: !Ref BucketName
+  ROUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: /
+      UserName: munkiRO
+  ROAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref 'ROUser'
+  ROUserGroup:
+    Type: AWS::IAM::Group
+  ROUsers:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref 'ROUserGroup'
+      Users: [!Ref 'ROUser']
+  ROPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: MunkiReadOnlyPolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:GetBucketLocation
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}"
+          - Effect: Allow
+            Action:
+              - s3:GetObject
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}/*"
+      Groups: [!Ref 'ROUserGroup']
+  RWUser:
+    Type: AWS::IAM::User
+    Properties:
+      Path: /
+      UserName: munkiRW
+  RWAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref 'RWUser'
+  RWUserGroup:
+    Type: AWS::IAM::Group
+  RWUsers:
+    Type: AWS::IAM::UserToGroupAddition
+    Properties:
+      GroupName: !Ref 'RWUserGroup'
+      Users: [!Ref 'RWUser'] 
+  RWPolicy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: MunkiReadWritePolicy
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action:
+              - s3:ListBucket
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}"
+          - Effect: Allow
+            Action:
+              - s3:PutObject
+              - s3:GetObject
+              - s3:DeleteObject
+            Resource:
+              - !Sub "arn:aws:s3:::${BucketName}/*"
+      Groups: [!Ref 'RWUserGroup']
+Outputs:
+  S3Bucket:
+    Description: S3BucketName
+    Value: !Ref 'S3Bucket'
+  ReadOnlyAccessKey:
+    Description: AccessKeys for Read-Only User
+    Value: !Ref ROAccessKey
+  ReadOnlySecretKey:
+    Description: AWS Secret Key for Read-Only User
+    Value: !GetAtt [ROAccessKey, SecretAccessKey]
+  ReadWriteAccessKey:
+    Description: AccessKey for Read Write User
+    Value: !Ref RWAccessKey
+  ReadWriteSecretKey:
+    Description: AWS SecretKey for Read Write User
+    Value: !GetAtt [RWAccessKey, SecretAccessKey]
